@@ -1,38 +1,41 @@
+import json
+
 import asks
 import asyncclick as click
-from environs import Env
 import trio
-
+from environs import Env
 
 env = Env()
 env.read_env()
 
 
-async def send_message(login, password, phone, message):
-    url = 'https://smsc.ru/sys/send.php'
+class SmscApiError(Exception):
+    pass
+
+
+async def request_smsc(
+    http_method: str,
+    api_method: str,
+    *,
+    login: str,
+    password: str,
+    payload: dict = {}
+) -> dict:
+    url = f'https://smsc.ru/sys/{api_method}'
     params = {
         'login': login,
         'psw': password,
-        'phones': phone,
-        'mes': message,
-        'valid': 1,
         'fmt': 3,
+        **payload
     }
-    response = await asks.post(url, params=params)
-    return response.json()
-
-
-async def get_status(login, password, phone, message_id):
-    url = 'https://smsc.ru/sys/status.php'
-    params = {
-        'login': login,
-        'psw': password,
-        'phone': phone,
-        'id': message_id,
-        'fmt': 3
-    }
-    response = await asks.get(url, params=params)
-    return response.json()
+    try:
+        response = await asks.request(http_method, url, params=params)
+        response_data = response.json()
+        if 'error' in response_data:
+            raise SmscApiError(response_data)
+        return response_data
+    except json.decoder.JSONDecodeError:
+        raise SmscApiError('Non-exists API method')
 
 
 @click.command()
@@ -41,9 +44,17 @@ async def get_status(login, password, phone, message_id):
 @click.option('-m', '--message', help='Текст сообщения', default=env.str('MESSAGE'))
 @click.option('-p', '--phone', help='Номер телефона', default=env.str('PHONE'))
 async def main(login, password, message, phone):
-    message = await send_message(login, password, phone, message)
+    message = await request_smsc(
+        'POST', 'send', login=login, password=password,
+        payload={'valid': 1, 'mes': message, 'phones': phone}
+    )
+
     await trio.sleep(1)
-    status = await get_status(login, password, phone, message['id'])
+
+    status = await request_smsc(
+        'GET', 'status', login=login, password=password,
+        payload={'phone': phone, 'id': message['id']}
+    )
     print(status)
 
 
