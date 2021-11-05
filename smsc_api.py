@@ -5,13 +5,14 @@ import asyncclick as click
 import trio
 from environs import Env
 
+from unittest.mock import patch
+
 env = Env()
 env.read_env()
 
 
 class SmscApiError(Exception):
     pass
-
 
 async def request_smsc(
     http_method: str,
@@ -44,18 +45,26 @@ async def request_smsc(
 @click.option('-m', '--message', help='Текст сообщения', default=env.str('MESSAGE'))
 @click.option('-p', '--phone', help='Номер телефона', default=env.str('PHONE'))
 async def main(login, password, message, phone):
-    message = await request_smsc(
-        'POST', 'send', login=login, password=password,
-        payload={'valid': 1, 'mes': message, 'phones': phone}
-    )
+    with patch('__main__.request_smsc') as mock:
+        mock.return_value = {
+            'id': 244,
+            'cnt': 1
+        }
+        message = await request_smsc(
+            'POST', 'send', login=login, password=password,
+            payload={'valid': 1, 'mes': message, 'phones': phone}
+        )
 
-    await trio.sleep(1)
-
-    status = await request_smsc(
-        'GET', 'status', login=login, password=password,
-        payload={'phone': phone, 'id': message['id']}
-    )
-    print(status)
+        mock.return_value = {
+            'status': 1,
+            'last_date': '05.11.2021 15:08:20',
+            'last_timestamp': 1636114100
+        }
+        status = await request_smsc(
+            'GET', 'status', login=login, password=password,
+            payload={'phone': phone, 'id': message['id']}
+        )
+        print(status)
 
 
 if __name__ == '__main__':
