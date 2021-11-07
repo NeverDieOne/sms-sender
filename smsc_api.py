@@ -1,14 +1,10 @@
 import json
+from unittest.mock import patch
 
 import asks
 import asyncclick as click
-import trio
-from environs import Env
 
-from unittest.mock import patch
-
-env = Env()
-env.read_env()
+from settings import settings
 
 
 class SmscApiError(Exception):
@@ -40,10 +36,10 @@ async def request_smsc(
 
 
 @click.command()
-@click.option('-l', '--login', help='Логин', default=env.str('LOGIN'))
-@click.option('-pass', '--password', help='Пароль', default=env.str('PASSWORD'))
-@click.option('-m', '--message', help='Текст сообщения', default=env.str('MESSAGE'))
-@click.option('-p', '--phone', help='Номер телефона', default=env.str('PHONE'))
+@click.option('-l', '--login', help='Логин', default=settings.login)
+@click.option('-pass', '--password', help='Пароль', default=settings.password)
+@click.option('-m', '--message', help='Текст сообщения', default=settings.message)
+@click.option('-p', '--phone', help='Номер телефона', default=settings.phone)
 async def main(login, password, message, phone):
     with patch('__main__.request_smsc') as mock:
         mock.return_value = {
