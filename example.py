@@ -2,6 +2,8 @@ import asyncio
 import aioredis
 import argparse
 
+import trio_asyncio
+
 from db import Database
 
 
@@ -86,4 +88,4 @@ async def main():
         await redis.close()
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    trio_asyncio.run(trio_asyncio.aio_as_trio(main))

@@ -5,3 +5,4 @@ quart==0.15.1
 quart-trio==0.8.1
 pydantic==1.8.2
 aioredis==2.0.0
+trio-asyncio==0.12.0
