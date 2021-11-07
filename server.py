@@ -1,5 +1,6 @@
 from unittest.mock import patch
 
+import trio
 from pydantic import BaseModel, ValidationError, constr
 from quart import render_template, request, websocket
 from quart_trio import QuartTrio
@@ -46,9 +47,23 @@ async def send_message():
 
 @app.websocket('/ws')
 async def ws():
+    delivered_sms_amount = 0
     while True:
-        data = await websocket.receive()
-        await websocket.send(f"echo {data}")
+        await websocket.send_json({
+            'msgType': 'SMSMailingStatus',
+            'SMSMailings': [
+                {
+                "timestamp": 1123131392.734,
+                "SMSText": "Сегодня гроза! Будьте осторожны!",
+                "mailingId": "1",
+                "totalSMSAmount": 100,
+                "deliveredSMSAmount": delivered_sms_amount,
+                "failedSMSAmount": 0,
+                }
+            ]
+        })
+        delivered_sms_amount += 1
+        await trio.sleep(1)
 
 
 if __name__ == '__main__':

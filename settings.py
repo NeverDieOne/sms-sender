@@ -7,8 +7,7 @@ class Settings(BaseSettings):
     password: Optional[str]
     message: Optional[str]
     phone: Optional[str]
-    debug: bool = False
-    secret_key: str = 'change_me'
+    redis_url: str
 
     class Config:
         env_file = '.env'
