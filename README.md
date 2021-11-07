@@ -34,6 +34,8 @@ python -r requirements.txt
 python main.py
 ```
 
+5. Перейти [на сайт](http://127.0.0.1:5000)
+
 ## Настройки окружения
 
 ```
