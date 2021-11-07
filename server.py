@@ -1,4 +1,5 @@
 import warnings
+from collections import Counter
 from unittest.mock import patch
 
 import aioredis
@@ -53,12 +54,6 @@ async def send_message():
             await aio_as_trio(app.db.add_sms_mailing)(
                 message_id, [settings.phone], message.text
             )
-
-            sms_mailings = await aio_as_trio(app.db.get_sms_mailings)(
-                message_id
-            )
-            print(sms_mailings)
-
         return {'message': response}
     except ValidationError as error:
         errors = [e['msg'] for e in error.errors()]
@@ -69,22 +64,24 @@ async def send_message():
 
 @app.websocket('/ws')
 async def ws():
-    delivered_sms_amount = 0
     while True:
-        await websocket.send_json({
-            'msgType': 'SMSMailingStatus',
-            'SMSMailings': [
-                {
-                "timestamp": 1123131392.734,
-                "SMSText": "Сегодня гроза! Будьте осторожны!",
-                "mailingId": "1",
-                "totalSMSAmount": 100,
-                "deliveredSMSAmount": delivered_sms_amount,
-                "failedSMSAmount": 0,
-                }
-            ]
-        })
-        delivered_sms_amount += 1
+        sms_ids = await aio_as_trio(app.db.list_sms_mailings)()
+        sms_mailings = await aio_as_trio(app.db.get_sms_mailings)(*sms_ids)
+        for sms_mailing in sms_mailings:
+            statuses_count = Counter(sms_mailing['phones'].values())
+            await websocket.send_json({
+                'msgType': 'SMSMailingStatus',
+                'SMSMailings': [
+                    {
+                        "timestamp": sms_mailing['created_at'],
+                        "SMSText": sms_mailing['text'],
+                        "mailingId": str(sms_mailing['sms_id']),
+                        "totalSMSAmount": sms_mailing['phones_count'],
+                        "deliveredSMSAmount": statuses_count['delivered'],
+                        "failedSMSAmount": statuses_count['failed'],
+                    }
+                ]
+            })
         await trio.sleep(1)
 
 
